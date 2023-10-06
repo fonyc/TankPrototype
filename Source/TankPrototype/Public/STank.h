@@ -35,6 +35,9 @@ protected:
 	UPROPERTY(EditAnywhere, meta=(Categoty = "Movement", AllowPrivateAccess = true))
 	float SpeedMultiplier;
 
+	UPROPERTY(EditAnywhere, meta=(Categoty = "Movement", AllowPrivateAccess = true))
+	float BodyTurnSpeed;
+
 private:
 	APlayerController* PlayerControllerRef;
 
@@ -42,6 +45,10 @@ private:
 	void Move(const FInputActionValue& InputActionValue);
 	void MouseTrace() const;
 
+	//Movement related
+	float Angle;
+	FRotator DestinationRotator;
+	
 	UPROPERTY(EditAnywhere, Category = "Movement")
 	TObjectPtr<UObject> MovementType;
 	

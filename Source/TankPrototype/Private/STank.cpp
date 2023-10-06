@@ -24,6 +24,7 @@ ASTank::ASTank()
 	//Default settings-> Overriden in Editor
 	SpringArmComponent->TargetArmLength = 2500.0f;
 	SpeedMultiplier = 1000.0f;
+	BodyTurnSpeed = 2.0f;
 }
 
 void ASTank::BeginPlay()
@@ -44,34 +45,29 @@ void ASTank::BeginPlay()
 void ASTank::Move(const FInputActionValue& InputActionValue)
 {
 	const FVector2D Value = InputActionValue.Get<FVector2D>();
+	UE_LOG(LogTemp, Warning, TEXT("Destination %f,%f"), Value.X, Value.Y);
+	//Get the destination vector by getting 1)Destination point and subtract it with the location of the body mesh
+	FVector DestinationVector = FVector{Value.X, Value.Y, 0};
 
-	if (const UWorld* World = GetWorld())
+	//Get Forward vector
+	FVector ForwardVector = FVector{BodyMesh->GetForwardVector().X, BodyMesh->GetForwardVector().Y, 0};
+	UE_LOG(LogTemp, Warning, TEXT("FW %f,%f"), BodyMesh->GetForwardVector().X, BodyMesh->GetForwardVector().Y);
+
+	//Create The FRotator from the two vectors
+	Angle = FMath::RadiansToDegrees(FMath::Cos(FVector::DotProduct(DestinationVector, ForwardVector)));
+	UE_LOG(LogTemp, Warning, TEXT("Acos %f"), FMath::Acos(FVector::DotProduct(DestinationVector, ForwardVector)));
+
+	//Get Angle direction 
+	FVector CrossProduct = FVector::CrossProduct(DestinationVector, ForwardVector);
+	float Sign = CrossProduct.Z < 0 ? 1 : -1;
+
+	DestinationRotator = FRotator(0, Sign * Angle, 0);
+
+	if (UWorld* World = GetWorld())
 	{
-		//Get the destination vector by getting 1)Destination point and subtract it with the location of the body mesh
-		//const FVector2D DeltaLocation = FVector2D{Value.X, Value.Y};
-		const FVector2D DeltaLocation = FVector2D{1, 1};
+		BodyMesh->AddLocalRotation(DestinationRotator * BodyTurnSpeed * UGameplayStatics::GetWorldDeltaSeconds(World));
 
-		//Get Forward vector
-		//FVector2D ForwardVector2D = FVector2D{BodyMesh->GetForwardVector().X, BodyMesh->GetForwardVector().Y};
-		FVector2D ForwardVector2D = FVector2D{0, -1};
-
-		//Create The FRotator from the two vectors
-		double Angle = FMath::RadiansToDegrees(FMath::Acos(FVector2D::DotProduct(DeltaLocation, ForwardVector2D)));
-
-		double DotProduct = (DeltaLocation.X * ForwardVector2D.X) + (DeltaLocation.Y * ForwardVector2D.Y);
-		double Magnitude1 = DeltaLocation.Size();
-		double Magnitude2 = ForwardVector2D.Size();
-		double CosAlpha = FMath::Acos(DotProduct/Magnitude1*Magnitude2);
-
-		UE_LOG(LogTemp, Warning, TEXT("Dot: %f"), DotProduct);
-		UE_LOG(LogTemp, Warning, TEXT("Angle: %f"), CosAlpha);
-		if (Angle > 180.0f) Angle -= 360.0f;
-		else if (Angle < -180.0f) Angle += 360.0f;
-		//Actually rotate the tank an interpolated quantity of degrees
-		FRotator Rotator(0, Angle / 100, 0);
-		BodyMesh->AddLocalRotation(Rotator);
-
-		//Move forward according the body mesh turret direction (THIS PART WORKS FINE)
+		//Move forward according the body mesh turret direction
 		AddActorLocalOffset(
 			BodyMesh->GetForwardVector() * SpeedMultiplier * UGameplayStatics::GetWorldDeltaSeconds(World));
 	}
